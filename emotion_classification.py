@@ -18,6 +18,17 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import os
 
 
+
+
+def accuracy_calc(output, target):
+    with torch.no_grad():
+        batch_size = target.size(0)
+        pred = torch.argmax(output, dim=1)
+        correct = pred.eq(target).float().sum(0)
+        acc = correct * 100 / batch_size
+    return [acc]
+
+
 # number of subprocesses to use for data loading
 num_workers = 0
 # how many samples per batch to load
@@ -61,7 +72,7 @@ train_dataset = datasets.ImageFolder(root= train_path,transform=train_transform)
 
 
 
-test_dataset = datasets.ImageFolder(root= test_path,transform=train_transform)
+test_dataset = datasets.ImageFolder(root= test_path,transform=test_transform)
 
 
 # obtain training indices that will be used for validation
@@ -76,8 +87,8 @@ train_sampler =SubsetRandomSampler(train_idx) #train_dataset[train_idx]#SubsetRa
 valid_sampler = SubsetRandomSampler(valid_idx)#train_dataset[valid_idx]#SubsetRandomSampler(valid_idx)
 
 
-train_loader = DataLoader(dataset=train_dataset,batch_size=32 ,sampler=train_sampler)
-test_loader = DataLoader(dataset=test_dataset,batch_size=1,shuffle=False)
+train_loader = DataLoader(dataset=train_dataset,batch_size=32 ,shuffle= True)#sampler=train_sampler)
+test_loader = DataLoader(dataset=test_dataset,batch_size=32)#,shuffle=False)
 
 valid_loader  = DataLoader(dataset=train_dataset,batch_size=32, sampler=valid_sampler)
 
@@ -155,9 +166,9 @@ print(model)
 criterion = nn.CrossEntropyLoss()
 
 # specify optimizer
-optimizer = optim.Adam(model.parameters(), lr=0.01)#,weight_decay=0.001)
+optimizer = optim.SGD(model.parameters(), lr=0.01)#,weight_decay=0.001)
 #################################################################
-epochs = 50
+epochs = 100
 steps = 0
 train = 0
 
@@ -170,14 +181,14 @@ xaxis =[]
 train_accuracy=0
 for e in range(epochs):
     running_loss = 0
-
+    #
     train_accuracy=0
 
     for inputs, labels in train_loader:
         
         inputs, labels = inputs.to(device), labels.to(device)
-        optimizer.zero_grad()
         
+        optimizer.zero_grad()
         log_ps = model(inputs)
         temp = log_ps.shape
         loss = criterion(log_ps, labels)
@@ -202,18 +213,18 @@ for e in range(epochs):
             for inputs, labels in test_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
                 log_ps = model(inputs)
-                test_loss += criterion(log_ps, labels)
+                test_loss += criterion(log_ps, labels).item()
 
                 ps = torch.exp(log_ps)
                 top_p, top_class = ps.topk(1, dim=1)
                 equals = top_class == labels.view(*top_class.shape)
-                accuracy += torch.mean(equals.type(torch.FloatTensor))
+                accuracy += accuracy_calc(log_ps, labels)[0].item()#torch.mean(equals.type(torch.FloatTensor))
                 
                 
         
         
         train_accuracy = train_accuracy/len(train_loader)
-        accuracy = accuracy/len(test_loader)   
+        accuracy =accuracy/len(test_loader)   
 
         train_losses.append(running_loss/len(train_loader))
         test_losses.append(test_loss/len(test_loader))
