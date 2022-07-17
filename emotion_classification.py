@@ -120,9 +120,11 @@ class Net(nn.Module):
     x= self.pool(x)
     x= self.dropout(x)
 
+    # shuff for git
     x= (self.relu(self.conv3(x)))
     x=self.bn3(x)
     x= (self.relu(self.conv3_5(x)))
+    temp= x.shape()
     x=self.pool(x)
     x= self.dropout(x)
 
